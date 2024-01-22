@@ -3,16 +3,14 @@ const cors = require('cors');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
 const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
 app.use(
   cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:5000',,
-    ],
+    origin: ['http://localhost:5173', 'http://localhost:5000', ,],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     optionsSuccessStatus: 204,
@@ -24,7 +22,6 @@ app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.eted0lc.mongodb.net/?retryWrites=true&w=majority`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -35,13 +32,71 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
     // await client.connect();
 
-    // users, admin and moderator related
-    const contactCollection = client.db('contactAll').collection('contact');
+    const userCollection = client.db('houseHunter').collection('users');
+    const addHouseCollection = client.db('houseHunter').collection('houses');
 
+    app.get('/protected', (req, res) => {
+      const token = req.cookies.jwt;
 
+      if (!token) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).json({ message: 'Invalid token' });
+        }
+
+        res.json({ message: 'Protected route accessed', user: decoded });
+      });
+    });
+
+    app.post('/register', async (req, res) => {
+      const { username, email, number, password } = req.body;
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Save the user to the database
+      await userCollection.insertOne({
+        username,
+        email,
+        number,
+        password: hashedPassword,
+      });
+
+      res.json({ message: 'User registered successfully' });
+    });
+
+    app.post('/login', async (req, res) => {
+      const { email, password } = req.body;
+
+      const user = await userCollection.findOne({ email, password });
+
+      if (!user) {
+        return res
+          .status(401)
+          .json({ message: 'Invalid username or password' });
+      }
+
+      const passwordMatch = await bcrypt.compare(password, user.password);
+
+      if (!passwordMatch) {
+        return res
+          .status(401)
+          .json({ message: 'Invalid username or password' });
+      }
+
+      const token = jwt.sign(
+        { username: user.username },
+        process.env.ACCESS_TOKEN_SECRET
+      );
+      res.cookie('jwt', token, { httpOnly: true });
+      res.json({ message: 'Login successful' });
+    });
+
+    console.log('API endpoints are ready');
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
