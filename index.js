@@ -53,6 +53,12 @@ async function run() {
       });
     });
 
+    app.post('/addhouse', async (req, res) => {
+      const reviews = req.body;
+      const result = await addHouseCollection.insertOne(reviews);
+      res.send(result);
+    });
+
     app.post('/register', async (req, res) => {
       const { username, email, number, password } = req.body;
 
