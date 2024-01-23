@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cookieParser = require('cookie-parser');
 const bcrypt = require('bcrypt');
@@ -135,49 +136,155 @@ async function run() {
       console.log(result);
     });
 
-    app.post('/register', async (req, res) => {
-      const { username, email, number, password } = req.body;
+    // Signup user
+    app.post('/signup', async (req, res) => {
+      const { name, email, password, role } = req.body;
+      // Hash the password
       const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Save the user to the database
-      await userCollection.insertOne({
-        username,
-        email,
-        number,
-        password: hashedPassword,
-      });
-
-      res.json({ message: 'User registered successfully' });
+      const query = { email: email };
+      //   check existing user
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: 'user already exist' });
+      }
+      const newUser = { name, email, password: hashedPassword, role };
+      const result = await userCollection.insertOne(newUser);
+      res.send(result);
     });
 
     app.post('/login', async (req, res) => {
       const { email, password } = req.body;
-
-      const user = await userCollection.findOne({ email, password });
-
-      if (!user) {
-        return res
-          .status(401)
-          .json({ message: 'Invalid username or password' });
+      const user = await userCollection.findOne({ email });
+      // If user not found or password doesn't match, return an error
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).send('Authorization Failure!');
       }
-
-      const passwordMatch = await bcrypt.compare(password, user.password);
-
-      if (!passwordMatch) {
-        return res
-          .status(401)
-          .json({ message: 'Invalid username or password' });
-      }
-
       const token = jwt.sign(
-        { username: user.username },
-        process.env.ACCESS_TOKEN_SECRET
+        { userId: user._id },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+          expiresIn: '1h',
+        }
       );
-      res.cookie('jwt', token, { httpOnly: true });
-      res.json({ message: 'Login successful' });
+      res.send(token);
     });
 
-    console.log('API endpoints are ready');
+    // Get current user
+    app.get('/currentuser', async (req, res) => {
+      const token = req.headers.authorization;
+      if (!token) {
+        return res
+          .status(401)
+          .send({ message: 'Authorization token not found' });
+      }
+      //   console.log(token);
+
+      //   verify token
+      jwt.verify(
+        token,
+        process.env.ACCESS_TOKEN_SECRET,
+        async (err, decoded) => {
+          if (err) {
+            return res.status(401).send('Invalid token');
+          }
+
+          const user = await userCollection.findOne({
+            _id: new ObjectId(decoded.userId),
+          });
+          // console.log(user);
+
+          if (!user) {
+            return res.status(404).send('User not found');
+          }
+
+          res.send(user);
+        }
+      );
+    });
+
+    //  check current user admin or not
+    app.get('/owner/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { owner: user?.role === 'owner' };
+      res.send(result);
+    });
+
+    // Signup user
+    app.post('/signup', async (req, res) => {
+      const { name, email, password, role } = req.body;
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const query = { email: email };
+      //   check existing user
+      const existingUser = await userCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: 'user already exist' });
+      }
+      const newUser = { name, email, password: hashedPassword, role };
+      const result = await userCollection.insertOne(newUser);
+      res.send(result);
+    });
+
+    app.post('/login', async (req, res) => {
+      const { email, password } = req.body;
+      const user = await userCollection.findOne({ email });
+      // If user not found or password doesn't match, return an error
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).send('Authorization Failure!');
+      }
+      const token = jwt.sign(
+        { userId: user._id },
+        process.env.ACCESS_TOKEN_SECRET,
+        {
+          expiresIn: '1h',
+        }
+      );
+      res.send(token);
+    });
+
+    // Get current user
+    app.get('/currentuser', async (req, res) => {
+      const token = req.headers.authorization;
+      if (!token) {
+        return res
+          .status(401)
+          .send({ message: 'Authorization token not found' });
+      }
+      //   console.log(token);
+
+      //   verify token
+      jwt.verify(
+        token,
+        process.env.ACCESS_TOKEN_SECRET,
+        async (err, decoded) => {
+          if (err) {
+            return res.status(401).send('Invalid token');
+          }
+
+          const user = await userCollection.findOne({
+            _id: new ObjectId(decoded.userId),
+          });
+          // console.log(user);
+
+          if (!user) {
+            return res.status(404).send('User not found');
+          }
+
+          res.send(user);
+        }
+      );
+    });
+
+    //  check current user admin or not
+    app.get('/owner/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const result = { owner: user?.role === 'owner' };
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db('admin').command({ ping: 1 });
