@@ -70,6 +70,11 @@ async function run() {
       const result = await cursor.toArray();
       res.send(result);
     });
+    // app.get('/renthouse', async (req, res) => {
+    //   const cursor = rentHouseCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
 
     app.get('/addhouse/:id', async (req, res) => {
       const id = req.params.id;
