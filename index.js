@@ -80,6 +80,31 @@ async function run() {
       res.send(result);
     });
 
+     app.patch('/addhouse/:id', async (req, res) => {
+       const id = req.params.id;
+       const filter = { _id: new ObjectId(id) };
+       const data = req.body;
+       console.log('Update Query:', filter, data);
+       const updatedDoc = {
+         $set: {
+           name: data?.name,
+           email: data?.email,
+           number: data?.number,
+           address: data?.address,
+           city: data?.city,
+           bedrooms: data?.bedrooms,
+           bathroom: data?.bathroom,
+           room: data?.room,
+           rent: data?.rent,
+           available: data?.available,
+           picture: data?.picture,
+           description: data?.description
+         },
+       };
+       const result = await addHouseCollection.updateOne(filter, updatedDoc);
+       res.send(result);
+     });
+
     app.post('/register', async (req, res) => {
       const { username, email, number, password } = req.body;
 
