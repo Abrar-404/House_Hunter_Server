@@ -11,7 +11,11 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://localhost:5000'],
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5000',
+      'https://house-hunter-f2298.web.app',
+    ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     optionsSuccessStatus: 204,
