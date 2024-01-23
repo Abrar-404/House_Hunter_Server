@@ -10,7 +10,7 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(
   cors({
-    origin: ['http://localhost:5173', 'http://localhost:5000', ,],
+    origin: ['http://localhost:5173', 'http://localhost:5000'],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     optionsSuccessStatus: 204,
@@ -36,7 +36,12 @@ async function run() {
 
     const userCollection = client.db('houseHunter').collection('users');
     const addHouseCollection = client.db('houseHunter').collection('houses');
-    const editHouseCollection = client.db('houseHunter').collection('edithouse');
+    const rentHouseCollection = client
+      .db('houseHunter')
+      .collection('renthouses');
+    const editHouseCollection = client
+      .db('houseHunter')
+      .collection('edithouse');
 
     app.get('/protected', (req, res) => {
       const token = req.cookies.jwt;
@@ -60,16 +65,28 @@ async function run() {
       res.send(result);
     });
 
-      app.get('/addhouse/:id', async (req, res) => {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const result = await addHouseCollection.findOne(query);
-        res.send(result);
-      });
+    app.get('/renthouse', async (req, res) => {
+      const cursor = rentHouseCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get('/addhouse/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await addHouseCollection.findOne(query);
+      res.send(result);
+    });
 
     app.post('/addhouse', async (req, res) => {
       const reviews = req.body;
       const result = await addHouseCollection.insertOne(reviews);
+      res.send(result);
+    });
+
+    app.post('/renthouse', async (req, res) => {
+      const reviews = req.body;
+      const result = await rentHouseCollection.insertOne(reviews);
       res.send(result);
     });
 
@@ -80,34 +97,41 @@ async function run() {
       res.send(result);
     });
 
-     app.patch('/addhouse/:id', async (req, res) => {
-       const id = req.params.id;
-       const filter = { _id: new ObjectId(id) };
-       const data = req.body;
-       console.log('Update Query:', filter, data);
-       const updatedDoc = {
-         $set: {
-           name: data?.name,
-           email: data?.email,
-           number: data?.number,
-           address: data?.address,
-           city: data?.city,
-           bedrooms: data?.bedrooms,
-           bathroom: data?.bathroom,
-           room: data?.room,
-           rent: data?.rent,
-           available: data?.available,
-           picture: data?.picture,
-           description: data?.description
-         },
-       };
-       const result = await addHouseCollection.updateOne(filter, updatedDoc);
-       res.send(result);
-     });
+    app.patch('/addhouse/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const data = req.body;
+      console.log('Update Query:', filter, data);
+      const updatedDoc = {
+        $set: {
+          name: data?.name,
+          email: data?.email,
+          number: data?.number,
+          address: data?.address,
+          city: data?.city,
+          bedrooms: data?.bedrooms,
+          bathroom: data?.bathroom,
+          room: data?.room,
+          rent: data?.rent,
+          available: data?.available,
+          picture: data?.picture,
+          description: data?.description,
+        },
+      };
+      const result = await addHouseCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    app.delete('/addhouse/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await addHouseCollection.deleteOne(query);
+      res.send(result);
+      console.log(result);
+    });
 
     app.post('/register', async (req, res) => {
       const { username, email, number, password } = req.body;
-
       const hashedPassword = await bcrypt.hash(password, 10);
 
       // Save the user to the database
