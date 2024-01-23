@@ -53,6 +53,12 @@ async function run() {
       });
     });
 
+    app.get('/addhouse', async (req, res) => {
+      const cursor = addHouseCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     app.post('/addhouse', async (req, res) => {
       const reviews = req.body;
       const result = await addHouseCollection.insertOne(reviews);
