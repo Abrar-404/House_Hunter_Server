@@ -36,6 +36,7 @@ async function run() {
 
     const userCollection = client.db('houseHunter').collection('users');
     const addHouseCollection = client.db('houseHunter').collection('houses');
+    const editHouseCollection = client.db('houseHunter').collection('edithouse');
 
     app.get('/protected', (req, res) => {
       const token = req.cookies.jwt;
@@ -59,9 +60,23 @@ async function run() {
       res.send(result);
     });
 
+      app.get('/addhouse/:id', async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await addHouseCollection.findOne(query);
+        res.send(result);
+      });
+
     app.post('/addhouse', async (req, res) => {
       const reviews = req.body;
       const result = await addHouseCollection.insertOne(reviews);
+      res.send(result);
+    });
+
+    app.post('/addhouse/:id', async (req, res) => {
+      const roomsAdd = req.body;
+      console.log(roomsAdd);
+      const result = await addHouseCollection.insertOne(roomsAdd);
       res.send(result);
     });
 
